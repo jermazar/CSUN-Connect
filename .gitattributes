@@ -1,0 +1,16 @@
+# Normalize text files to LF inside the repo
+* text=auto eol=lf
+
+# Keep binaries as-is
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+
+# Windows batch scripts can use CRLF
+*.bat eol=crlf
+*.cmd eol=crlf

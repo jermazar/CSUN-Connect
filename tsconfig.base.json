@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@campus/ui": [
+        "packages/ui/src"
+      ],
+      "@campus/shared": [
+        "packages/shared/src"
+      ],
+      "@campus/data": [
+        "packages/data/src"
+      ]
+    }
+  },
+  "include": [
+    "packages",
+    "apps"
+  ]
+}
