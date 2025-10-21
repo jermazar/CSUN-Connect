@@ -1,18 +1,27 @@
 import React from "react";
-import Link from "next/link";
-import { SignOutButton } from "./components/SignOutButton";
 import { Providers } from "./providers";
+import HeaderClient from "./components/HeaderClient";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const shell: React.CSSProperties = {
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+    color: "#111",
+    background: "#fff",
+  };
+  const main: React.CSSProperties = {
+    maxWidth: 960,
+    margin: "16px auto 0 auto",
+    padding: "0 24px 24px 24px",
+    boxSizing: "border-box",
+  };
+
   return (
     <html lang="en">
-      <body style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
-        <header style={{ display:'flex', gap: 16, alignItems:'center', marginBottom: 24 }}>
-          <Link href="/">Home</Link>
-          <Link href="/sign-in">Sign In</Link>
-          <SignOutButton />
-        </header>
-        <Providers>{children}</Providers>
+      <body style={shell}>
+        <HeaderClient />
+        <main style={main}>
+          <Providers>{children}</Providers>
+        </main>
       </body>
     </html>
   );
