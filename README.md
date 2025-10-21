@@ -1,4 +1,4 @@
-# Campus Social — Monorepo (Web + Mobile) with Sign-In
+# CSUN Connect —  (Web + Mobile)
 
 ## Prereqs
 - Node.js 18+
