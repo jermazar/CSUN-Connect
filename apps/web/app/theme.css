@@ -1,0 +1,39 @@
+/* === CSUN theme (red/black/white) === */
+:root{
+  /* brand reds */
+  --brand-50:#fef2f2;
+  --brand-100:#fee2e2;
+  --brand-200:#fecaca;
+  --brand-400:#f87171;
+  --brand-600:#dc2626;   /* primary */
+  --brand-700:#b91c1c;   /* hover/danger */
+  --brand-800:#991b1b;
+
+  /* base */
+  --bg:#ffffff;
+  --text:#111111;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --card:#ffffff;
+
+  /* links / buttons */
+  --link:var(--brand-700);
+  --link-hover:#7f1d1d;
+
+  --btn-bg:var(--brand-600);
+  --btn-bg-hover:var(--brand-700);
+  --btn-border:var(--brand-700);
+  --btn-text:#ffffff;
+}
+
+/* helpful defaults so links/buttons change site-wide */
+a{ color: var(--link); }
+a:hover{ color: var(--link-hover); }
+
+button.btn-primary{
+  border:1px solid var(--btn-border);
+  background:var(--btn-bg);
+  color:var(--btn-text);
+  border-radius:8px; padding:8px 12px; cursor:pointer;
+}
+button.btn-primary:hover{ background:var(--btn-bg-hover); }
