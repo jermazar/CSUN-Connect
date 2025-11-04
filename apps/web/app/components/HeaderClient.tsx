@@ -67,6 +67,8 @@ export default function HeaderClient() {
           <a href="/" style={link}>Home</a>
           <a href="/feed" style={link}>Feed</a>
           <a href="/events" style={link}>Events</a>
+          <a href="/calendar" style={link}>Calendar</a>
+
         </nav>
 
         {/* RIGHT: account actions + theme */}
