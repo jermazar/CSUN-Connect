@@ -1,12 +1,8 @@
 import React from "react";
 import Script from "next/script";
-import dynamic from "next/dynamic";
-import Providers from "./providers"; // default import
+import Providers from "./providers"; // default export (wraps ThemeProvider + ReactQuery)
 import HeaderClient from "./components/HeaderClient";
 import "./theme.css";
-
-/** Client-only moon/sun toggle (no SSR) */
-const MoonToggle = dynamic(() => import("./components/theme/MoonToggle"), { ssr: false });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const shell: React.CSSProperties = {
@@ -45,13 +41,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     boxSizing: "border-box",
   };
 
-  // Pre-hydration theme set (prevents flash)
+  // Set theme BEFORE hydration (persist across pages)
   const initCode = `
     try {
-      var saved = localStorage.getItem('theme') || 'system';
-      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var actual = (saved === 'system') ? (prefersDark ? 'dark' : 'light') : saved;
-      document.documentElement.setAttribute('data-theme', actual);
+      var t = localStorage.getItem('theme');
+      if (t !== 'light' && t !== 'dark') {
+        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
     } catch (e) {}
   `;
 
@@ -61,15 +58,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script id="theme-init" strategy="beforeInteractive">{initCode}</Script>
       </head>
       <body style={shell}>
-        <div style={stickyHeader}>
-          <div style={headerInner}>
-            <HeaderClient />
+        {/* Providers wraps header + content so MoonToggle has context everywhere */}
+        <Providers>
+          <div style={stickyHeader}>
+            <div style={headerInner}>
+              <HeaderClient />
+            </div>
           </div>
-        </div>
 
-        <main style={main}>
-          <Providers>{children}</Providers>
-        </main>
+          <main style={main}>{children}</main>
+        </Providers>
       </body>
     </html>
   );

@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import * as React from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -10,64 +8,114 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function Page() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const prefill = params.get("email") ?? "";
-
-  const [email, setEmail] = useState(prefill);
-  const [pw, setPw] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+export default function SignInPage() {
+  const [email, setEmail] = React.useState("");
+  const [pw, setPw] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    if (!email.trim()) return setErr("Email is required.");
+    if (!pw) return setErr("Password is required.");
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: pw,
+      });
       if (error) throw error;
-      router.replace("/feed");
-    } catch (e:any) {
-      // Supabase commonly returns "Invalid login credentials"
+      window.location.assign("/feed");
+    } catch (e: any) {
       setErr(e.message || "Sign in failed");
     } finally {
       setBusy(false);
     }
   }
 
+  // styles (consistent with your theme)
+  const page: React.CSSProperties = { maxWidth: 560, margin: "24px auto", padding: "0 24px" };
+  const card: React.CSSProperties = {
+    border: "1px solid var(--elev-border)",
+    background: "var(--card)",
+    color: "var(--text)",
+    borderRadius: 16,
+    boxShadow: "var(--shadow)" as any,
+    padding: 20,
+  };
+  const row: React.CSSProperties = { display: "grid", gap: 6 };
+  const input: React.CSSProperties = {
+    border: "1px solid var(--border)",
+    background: "var(--bg)",
+    color: "var(--text)",
+    borderRadius: 8,
+    padding: "10px 12px",
+  };
+  const button: React.CSSProperties = {
+    border: "1px solid var(--btn-border)",
+    background: "var(--btn-bg)",
+    color: "var(--btn-text)",
+    borderRadius: 10,
+    padding: "10px 14px",
+    cursor: "pointer",
+  };
+  const link: React.CSSProperties = { color: "var(--link)", textDecoration: "underline" };
+
   return (
-    <main className="mx-auto grid max-w-md gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Sign in</h1>
-      <form onSubmit={onSubmit} className="grid gap-3 rounded-2xl border p-4">
-        <div className="grid gap-1">
-          <label className="text-sm opacity-80">Email</label>
-          <input type="email" className="rounded border px-3 py-2" value={email} onChange={e=>setEmail(e.target.value)} />
+    <main style={page}>
+      <h1 style={{ margin: "0 0 12px 0" }}>Welcome back</h1>
+      <p style={{ margin: "0 0 16px 0", color: "var(--muted)" }}>
+        Sign in to continue to <strong>CSUN Connect</strong>.
+      </p>
+
+      <form onSubmit={onSubmit} style={{ ...card, display: "grid", gap: 14 }}>
+        <div style={row}>
+          <label>Email</label>
+          <input
+            type="email"
+            style={input}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@my.csun.edu"
+          />
         </div>
-        <div className="grid gap-1">
-          <label className="text-sm opacity-80">Password</label>
-          <input type="password" className="rounded border px-3 py-2" value={pw} onChange={e=>setPw(e.target.value)} />
+
+        <div style={row}>
+          <label>Password</label>
+          <input
+            type="password"
+            style={input}
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder="••••••••"
+          />
         </div>
-        <button disabled={busy} className="rounded border px-4 py-2 font-medium disabled:opacity-50">
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
 
         {err && (
-          <div className="grid gap-2">
-            <p className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-800">
-              {err}
-            </p>
-            <div className="text-sm">
-              Don’t have an account?{" "}
-              <Link
-                href={`/sign-up?email=${encodeURIComponent(email)}`}
-                className="underline"
-              >
-                Create an account
-              </Link>
-            </div>
-          </div>
+          <p
+            style={{
+              margin: 0,
+              color: "#b91c1c",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              padding: 10,
+              borderRadius: 8,
+            }}
+          >
+            {err}
+          </p>
         )}
+
+        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+          <button type="submit" disabled={busy} style={{ ...button, opacity: busy ? 0.6 : 1 }}>
+            {busy ? "Signing in…" : "Sign In"}
+          </button>
+
+          <a href="/sign-up" style={link}>
+            Create an account
+          </a>
+        </div>
       </form>
     </main>
   );

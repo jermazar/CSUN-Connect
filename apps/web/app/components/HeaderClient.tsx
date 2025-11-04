@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import MoonToggle from "./theme/MoonToggle";
 
@@ -15,13 +16,16 @@ export default function HeaderClient() {
 
   React.useEffect(() => {
     let mounted = true;
+
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (mounted) setUserId(data.user?.id ?? null);
     })();
+
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUserId(session?.user?.id ?? null);
     });
+
     return () => {
       mounted = false;
       sub?.subscription.unsubscribe();
@@ -36,50 +40,49 @@ export default function HeaderClient() {
 
   // ---- styles
   const row: React.CSSProperties = {
-    width: "100%",                               // 🔥 make the bar span full width
+    width: "100%",
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",             // push left vs right apart
+    justifyContent: "space-between",
   };
   const group: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
-    gap: 16,                                     // consistent spacing between items
+    gap: 16,
   };
-  const link: React.CSSProperties = {
+  const linkStyle: React.CSSProperties = {
     textDecoration: "underline",
     color: "var(--link)",
   };
   const button: React.CSSProperties = {
     padding: "6px 10px",
     borderRadius: 8,
-    border: "1px solid var(--brand-700)",
-    background: "var(--brand-600)",
-    color: "#fff",
+    border: "1px solid var(--btn-border)",
+    background: "var(--btn-bg)",
+    color: "var(--btn-text)",
     cursor: "pointer",
   };
 
   return (
     <>
       <div style={row}>
-        {/* LEFT: main nav */}
+        {/* LEFT: main nav (client-side links) */}
         <nav style={group}>
-          <a href="/" style={link}>Home</a>
-          <a href="/feed" style={link}>Feed</a>
-          <a href="/events" style={link}>Events</a>
-          <a href="/calendar" style={link}>Calendar</a>
-
+          <Link href="/" style={linkStyle}>Home</Link>
+          <Link href="/feed" style={linkStyle}>Feed</Link>
+          <Link href="/events" style={linkStyle}>Events</Link>
+          <Link href="/calendar" style={linkStyle}>Calendar</Link>
         </nav>
 
         {/* RIGHT: account actions + theme */}
         <div style={group}>
           {userId ? (
             <>
-              <a href="/account" style={link}>My Account</a>
+              <Link href="/account" style={linkStyle}>My Account</Link>
               <button onClick={() => setShowConfirm(true)} style={button}>Sign Out</button>
             </>
           ) : (
-            <a href="/sign-in" style={link}>My Account</a>
+            <Link href="/sign-in" style={linkStyle}>My Account</Link>
           )}
           <MoonToggle />
         </div>
@@ -103,11 +106,13 @@ export default function HeaderClient() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#fff",
+              background: "var(--card)",
+              color: "var(--text)",
               padding: 20,
               borderRadius: 12,
               width: 340,
-              boxShadow: "0 10px 30px rgba(0,0,0,.2)",
+              border: "1px solid var(--card-border)",
+              boxShadow: "var(--shadow)" as any,
             }}
           >
             <h3 style={{ marginTop: 0, marginBottom: 8 }}>Sign out?</h3>
