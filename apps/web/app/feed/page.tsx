@@ -1,327 +1,143 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { createPost, useCampusPosts, useMyMajorPosts } from "@campus/data";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-type Post = {
-  id: string;
-  author_id: string;
-  body: string;
-  created_at: string;
-  is_hidden: boolean | null;
-  group_id: string | null;
-};
-
-type Profile = {
-  user_id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-};
-
-function formatTimestamp(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function PostCard({ p }: any) {
+  const name = p.author?.full_name || "Student";
+  const avatar = p.author?.avatar_url || undefined;
+  return (
+    <article style={{ border:"1px solid #eee", borderRadius:16, padding:12 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{
+          width:36, height:36, borderRadius:9999, background:"#e5e7eb",
+          backgroundImage: avatar ? `url(${avatar})` : undefined,
+          backgroundSize:"cover", backgroundPosition:"center",
+          border:"1px solid #ddd"
+        }}/>
+        <div style={{ fontWeight:600 }}>{name}</div>
+        <div style={{ marginLeft:"auto", fontSize:12, color:"#777" }}>
+          {new Date(p.created_at).toLocaleString()}
+        </div>
+      </div>
+      <p style={{ marginTop:8 }}>{p.body}</p>
+      {p.major && <span style={{ fontSize:12, color:"#555" }}>#{p.major}</span>}
+    </article>
+  );
 }
 
-
 export default function Page() {
-  const [items, setItems] = useState<Post[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [loading, setLoading] = useState(true);
-  const [val, setVal] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [tab, setTab] = useState<"campus" | "major">("campus");
+  const [text, setText] = useState("");
+  const [majorCode, setMajorCode] = useState<string | null>(null);
+  const [majorName, setMajorName] = useState<string | null>(null);
+  const campus = useCampusPosts();
+  const major = useMyMajorPosts();
 
-  // ---------- data helpers ----------
-  async function fetchProfiles(authorIds: string[]) {
-    const unique = Array.from(new Set(authorIds.filter(Boolean)));
-    if (!unique.length) return;
-
-    const { data } = await supabase
-  .from("profiles")
-  .select("user_id, full_name, avatar_url")   // ⬅ add avatar_url
-  .in("user_id", unique);
-
-    if (data) {
-      const map: Record<string, Profile> = {};
-      for (const p of data as Profile[]) map[p.user_id] = p;
-      setProfiles((prev) => ({ ...prev, ...map }));
-    }
-  }
-
-  async function fetchLatest() {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("id, author_id, body, created_at, is_hidden, group_id")
-      .is("group_id", null) // campus-only
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) setErr(error.message);
-    else {
-      setErr(null);
-      const posts = (data ?? []) as Post[];
-      setItems(posts);
-      fetchProfiles(posts.map((p) => p.author_id));
-    }
-    setLoading(false);
-  }
-
+  // Load my major code + friendly name once
   useEffect(() => {
-    let mounted = true;
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      setUserId(auth?.user?.id ?? null);
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id;
+      if (!uid) return;
 
-      await fetchLatest();
-      if (!mounted) return;
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("major")
+        .eq("id", uid)
+        .maybeSingle();
 
-      pollingRef.current = setInterval(fetchLatest, 5000);
-      const onFocus = () => fetchLatest();
-      window.addEventListener("focus", onFocus);
+      const code = (prof?.major as string) ?? null;
+      setMajorCode(code);
 
-      return () => {
-        mounted = false;
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        window.removeEventListener("focus", onFocus);
-      };
+      if (code) {
+        const { data: m } = await supabase
+          .from("majors")
+          .select("name")
+          .eq("code", code)
+          .maybeSingle();
+        setMajorName(m?.name ?? code);
+      }
     })();
   }, []);
 
   async function submit() {
-    if (!val.trim()) return;
-    if (!userId) {
-      setErr("Please sign in to post.");
-      return;
-    }
-    setBusy(true);
-    setErr(null);
-    try {
-      const { data, error } = await supabase
-        .from("posts")
-        .insert({ author_id: userId, body: val, group_id: null })
-        .select("id, author_id, body, created_at, is_hidden, group_id")
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        const p = data as Post;
-        setItems((prev) => [p, ...prev]); // optimistic prepend
-        fetchProfiles([p.author_id]);
-      }
-      setVal("");
-    } catch (e: any) {
-      setErr(e.message || "Failed to post");
-    } finally {
-      setBusy(false);
+    const body = text.trim();
+    if (!body) return;
+    await createPost(body, tab);
+    setText("");
+    if (tab === "campus") {
+      campus.refetch();
+    } else {
+      major.refetch();
     }
   }
 
-  const canPost = !!userId;
-
-  // ---------- Inline styles (no Tailwind) ----------
-  const pageWrap: React.CSSProperties = {
-    maxWidth: 1280,            // whole page content width cap
-    margin: "0 auto",
-    padding: "24px",
-    boxSizing: "border-box",
-  };
-
-  const grid: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "420px minmax(0, 1fr)", // LEFT WIDTH | RIGHT FLEX
-    columnGap: 32,
-    alignItems: "start",
-  };
-
-  const leftCol: React.CSSProperties = {
-    position: "sticky",
-    top: 96,                   // distance from top when sticky (adjust)
-    alignSelf: "start",
-  };
-
-  const composerCard: React.CSSProperties = {
-    border: "1px solid #e5e7eb",
-    borderRadius: 16,
-    padding: 16,
-    boxShadow: "0 1px 3px rgba(0,0,0,.04)",
-    background: "#fff",
-    width: 380,                // center the small card in the left column
-    margin: "0 auto",          // <-- centers the composer INSIDE the left column
-  };
-
-  const smallText: React.CSSProperties = { fontSize: 12, opacity: 0.6 };
-  const btn: React.CSSProperties = {
-    border: "1px solid #111827",
-    borderRadius: 12,
-    padding: "6px 10px",
-    cursor: "pointer",
-    background: "#fff",
-  };
-
-  const feedCard: React.CSSProperties = {
-    border: "1px solid #e5e7eb",
-    borderRadius: 16,
-    padding: 16,
-    background: "#fff",
-    boxShadow: "0 1px 3px rgba(0,0,0,.04)",
-  };
-
-  // ✦ Add these style objects inside your component (before the return):
-
-const postCard: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 16,
-  padding: 16,
-  background: "#fff",
-  boxShadow: "0 1px 3px rgba(0,0,0,.05)",
-};
-
-const postHeader: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: 8,
-};
-
-const authorRow: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-};
-
-const avatarStyle = (url?: string | null): React.CSSProperties => ({
-  width: 36,
-  height: 36,
-  borderRadius: 9999,
-  background: "#e5e7eb",
-  border: "1px solid #d1d5db",
-  backgroundImage: url ? `url(${url})` : undefined,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-});
-
-const nameStyle: React.CSSProperties = { fontWeight: 600 };
-const timeStyle: React.CSSProperties = { fontSize: 12, opacity: 0.6, whiteSpace: "nowrap" };
-const bodyStyle: React.CSSProperties = { whiteSpace: "pre-wrap", lineHeight: 1.6 };
+  const list = tab === "campus" ? (campus.data ?? []) : (major.data ?? []);
+  const majorTabDisabled = !majorCode; // no major set yet
+  const majorTabLabel = majorName ? `${majorName}` : "My Major";
+  const feedTitle = tab === "campus" ? "Campus Feed" : `${majorTabLabel} Feed`;
 
   return (
-    <main style={pageWrap}>
-      <div style={grid}>
-        {/* LEFT: composer */}
-        <aside style={leftCol}>
-          <section style={composerCard}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Share an update</h2>
-              {!canPost && (
-                <a href="/sign-in" style={{ ...smallText, textDecoration: "underline" }}>
-                  Sign in to post
-                </a>
-              )}
-            </div>
-
-            <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
-              <textarea
-                placeholder="What's happening on campus?"
-                value={val}
-                onChange={(e) => setVal(e.target.value)}
-                maxLength={5000}
-                disabled={!canPost}
-                style={{
-                  width: "100%",
-                  height: 112,
-                  resize: "none",
-                  border: 0,
-                  outline: "none",
-                  padding: 12,
-                  boxSizing: "border-box",
-                }}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  borderTop: "1px solid #e5e7eb",
-                  padding: 8,
-                }}
-              >
-                <span style={smallText}>{val.length}/5000</span>
-                <button
-                  onClick={submit}
-                  disabled={busy || !val.trim() || !canPost}
-                  style={{
-                    ...btn,
-                    opacity: busy || !val.trim() || !canPost ? 0.5 : 1,
-                    pointerEvents: busy || !val.trim() || !canPost ? "none" : "auto",
-                  }}
-                >
-                  {busy ? "Posting…" : "Post"}
-                </button>
-              </div>
-            </div>
-
-            {err && (
-              <p
-                style={{
-                  marginTop: 8,
-                  fontSize: 12,
-                  color: "#b91c1c",
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: 8,
-                  padding: 8,
-                }}
-              >
-                {err}
-              </p>
-            )}
-            {!canPost && (
-              <p style={{ ...smallText, marginTop: 8 }}>You must be signed in to post.</p>
-            )}
-          </section>
-        </aside>
-
-        {/* RIGHT: feed */}
-        <section>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: "4px 0 12px" }}>Campus Feed</h2>
-
-          {loading ? (
-            <div style={{ ...feedCard, opacity: 0.6 }}>Loading feed…</div>
-          ) : items.length === 0 ? (
-            <div style={{ ...feedCard, opacity: 0.6 }}>No posts yet. Be the first!</div>
-          ) : (
-            <ul style={{ display: "grid", gap: 12, listStyle: "none", padding: 0, margin: 0 }}>
-  {items.map((p) => {
-    const prof = profiles[p.author_id];
-    const displayName = prof?.full_name || "Student";
-    const avatar = prof?.avatar_url || null;
-
-  return (
-      <li key={p.id} style={postCard}>
-        <div style={postHeader}>
-          <div style={authorRow}>
-            <div style={avatarStyle(avatar)} />
-            <span style={nameStyle}>{displayName}</span>
-          </div>
-          <time style={timeStyle}>{formatTimestamp(p.created_at)}</time>
+    <main style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:24, padding:24 }}>
+      <section style={{ border:"1px solid #eee", borderRadius:16, padding:16 }}>
+        <h2>Share an update</h2>
+        <div style={{ display:"flex", gap:8, marginTop:12 }}>
+          <button
+            onClick={() => setTab("campus")}
+            style={{ padding:"6px 10px", borderRadius:8, border: tab==="campus" ? "2px solid #111" : "1px solid #ccc", background:"#fff" }}
+          >
+            Campus
+          </button>
+          <button
+            onClick={() => !majorTabDisabled && setTab("major")}
+            disabled={majorTabDisabled}
+            title={majorTabDisabled ? "Add your major on the Account page" : ""}
+            style={{
+              padding:"6px 10px",
+              borderRadius:8,
+              border: tab==="major" ? "2px solid #111" : "1px solid #ccc",
+              background:"#fff",
+              opacity: majorTabDisabled ? 0.5 : 1,
+              cursor: majorTabDisabled ? "not-allowed" : "pointer",
+            }}
+          >
+            {majorTabLabel}
+          </button>
         </div>
-        <div style={bodyStyle}>{p.body}</div>
-      </li>
-    );
-  })}
-</ul>
-          )}
-        </section>
-      </div>
+
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={tab==="campus" ? "What's happening on campus?" : `What's happening in ${majorTabLabel.toLowerCase()}?`}
+          style={{ marginTop:12, width:"100%", minHeight:120, borderRadius:12, border:"1px solid #ddd", padding:10 }}
+        />
+        <div style={{ display:"flex", justifyContent:"flex-end" }}>
+          <button onClick={submit} style={{ padding:"8px 12px", border:"1px solid #111", borderRadius:8, background:"#fff" }}>
+            Post
+          </button>
+        </div>
+
+        {majorTabDisabled && (
+          <p style={{ marginTop:8, fontSize:12, color:"#555" }}>
+            To post in your major feed, set your major on the <a href="/account" style={{ textDecoration:"underline" }}>Account</a> page.
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2 style={{ marginBottom:12 }}>{feedTitle}</h2>
+        <div style={{ display:"grid", gap:12 }}>
+          {list.map((p: any) => <PostCard key={p.id} p={p} />)}
+          {list.length===0 && <p style={{ color:"#777" }}>No posts yet.</p>}
+        </div>
+      </section>
     </main>
   );
 }

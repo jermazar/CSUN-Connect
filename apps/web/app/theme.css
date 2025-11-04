@@ -1,6 +1,10 @@
 /* === CSUN theme (red/black/white) === */
-:root{
-  /* brand reds */
+
+/* -------------------- */
+/* LIGHT MODE (default) */
+/* -------------------- */
+:root {
+  /* brand red palette */
   --brand-50:#fef2f2;
   --brand-100:#fee2e2;
   --brand-200:#fecaca;
@@ -9,14 +13,19 @@
   --brand-700:#b91c1c;   /* hover/danger */
   --brand-800:#991b1b;
 
-  /* base */
+  /* surfaces & text */
   --bg:#ffffff;
   --text:#111111;
   --muted:#6b7280;
   --border:#e5e7eb;
   --card:#ffffff;
+  --card-border:#e5e7eb;
 
-  /* links / buttons */
+  /* inputs */
+  --input-bg:#ffffff;
+  --input-border:#d1d5db;
+
+  /* links/buttons */
   --link:var(--brand-700);
   --link-hover:#7f1d1d;
 
@@ -24,16 +33,65 @@
   --btn-bg-hover:var(--brand-700);
   --btn-border:var(--brand-700);
   --btn-text:#ffffff;
+
+  /* shadows (optional) */
+  --shadow:0 4px 12px rgba(0,0,0,.08);
 }
 
-/* helpful defaults so links/buttons change site-wide */
-a{ color: var(--link); }
-a:hover{ color: var(--link-hover); }
+/* -------------------- */
+/* DARK MODE */
+/* Triggered by JS via <html data-theme="dark"> */
+/* -------------------- */
+html[data-theme="dark"] {
+  /* surfaces */
+  --bg:#0d0d0d;
+  --card:#111111;
+  --card-border:#1f1f1f;
 
-button.btn-primary{
+  /* text */
+  --text:#f8fafc;
+  --muted:#9ca3af;
+
+  /* borders & inputs */
+  --border:#27272a;
+  --input-bg:#0d0d0d;
+  --input-border:#3f3f46;
+
+  /* links/buttons — keep CSUN red branding */
+  --link:#f87171;
+  --link-hover:#fca5a5;
+
+  --btn-bg:#b91c1c;
+  --btn-bg-hover:#dc2626;
+  --btn-border:#fca5a5;
+  --btn-text:#ffffff;
+
+  --shadow:0 4px 12px rgba(0,0,0,.4);
+}
+
+/* -------------------- */
+/* GLOBAL ELEMENTS */
+/* -------------------- */
+
+html,body {
+  background:var(--bg);
+  color:var(--text);
+  transition: background .25s, color .25s;
+}
+
+a { color: var(--link); transition: .2s; }
+a:hover { color: var(--link-hover); }
+
+/* Primary button utility */
+button.btn-primary {
   border:1px solid var(--btn-border);
   background:var(--btn-bg);
   color:var(--btn-text);
-  border-radius:8px; padding:8px 12px; cursor:pointer;
+  border-radius:8px;
+  padding:8px 12px;
+  cursor:pointer;
+  transition:.2s;
 }
-button.btn-primary:hover{ background:var(--btn-bg-hover); }
+button.btn-primary:hover {
+  background:var(--btn-bg-hover);
+}

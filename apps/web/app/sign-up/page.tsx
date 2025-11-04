@@ -20,36 +20,48 @@ export default function Page() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null); setOk(null);
+
     if (!first.trim() || !last.trim()) return setErr("Please enter your first and last name.");
     if (!email.trim()) return setErr("Email is required.");
     if (pw.length < 8) return setErr("Password must be at least 8 characters.");
+
     setBusy(true);
     try {
+      // 1) SIGN UP with metadata (your variables are correct)
       const { data, error } = await supabase.auth.signUp({
         email,
         password: pw,
-        options: { data: {
-          first_name: first.trim(),
-          last_name:  last.trim(),
-          full_name:  `${first.trim()} ${last.trim()}`,
-        } }
+        options: {
+          data: {
+            first_name: first.trim(),
+            last_name:  last.trim(),
+            full_name:  `${first.trim()} ${last.trim()}`,
+          },
+        },
       });
       if (error) throw error;
 
-      // if email confirm off, insert profile now (trigger also covers this)
+      // 2) If email confirmation is OFF, you'll get a session immediately.
+      //    The DB trigger already created public.profiles(id = user.id).
+      //    We DO NOT insert a new row; we just update the one created by the trigger.
       if (data.user && data.session) {
-        const ins = await supabase
+        const uid = data.user.id;
+        const full = `${first.trim()} ${last.trim()}`.trim();
+
+        // Mirror the compat column user_id and set full_name (safe under your RLS: update own row)
+        await supabase
           .from("profiles")
-          .insert({ user_id: data.user.id, full_name: `${first.trim()} ${last.trim()}` })
-          .select("user_id")
-          .single()
-          .catch(()=>null); // ignore duplicate
+          .update({ user_id: uid, full_name: full })
+          .eq("id", uid);
+
         setOk("Account created! Redirecting to Feed…");
         window.location.assign("/feed");
-      } else {
-        setOk("Check your email to confirm your account.");
+        return;
       }
-    } catch (e:any) {
+
+      // 3) If email confirmation is ON, there is no session yet.
+      setOk("Check your email to confirm your account.");
+    } catch (e: any) {
       setErr(e.message || "Sign up failed");
     } finally {
       setBusy(false);

@@ -39,7 +39,7 @@ export default function LandingPage() {
   return (
     <section style={wrap}>
       <header style={hero}>
-        <h1 style={{ margin: 0 }}>Welcome to <span style={{ color: "var(--brand-700)" }}>CSUN Connect</span>!</h1>
+        <h1 style={{ margin: 0 }}>Welcome Matadors to <span style={{ color: "var(--brand-700)" }}>CSUN Connect</span>!</h1>
         <p style={{ marginTop: 8, color: "var(--muted)" }}>
           Your hub for campus updates, events, and student life.
         </p>
