@@ -10,7 +10,6 @@ type EventRow = {
   start_time: string;           // timestamptz
   end_time?: string | null;
   location?: string | null;
-  // NEW (for scheduling / visibility)
   is_published: boolean;
   publish_at: string | null;
 };
@@ -57,12 +56,58 @@ export default function CalendarMonth() {
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
 
+  // whether this viewer is allowed to see drafts
+  const [canSeeDrafts, setCanSeeDrafts] = React.useState(false);
+
+  // --- figure out if user is admin / club officer ---
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id;
+        if (!uid || cancelled) {
+          setCanSeeDrafts(false);
+          return;
+        }
+
+        const { data: prof, error } = await supabase
+          .from("profiles")
+          .select("role, clubs")
+          .eq("id", uid)
+          .single();
+
+        if (error || !prof) {
+          if (!cancelled) setCanSeeDrafts(false);
+          return;
+        }
+
+        const role = (prof as any).role as string | null;
+        const clubs = Array.isArray((prof as any).clubs)
+          ? ((prof as any).clubs as string[])
+          : [];
+
+        const isAdmin = role === "admin";
+        const isOfficer = clubs.length > 0;
+
+        if (!cancelled) setCanSeeDrafts(isAdmin || isOfficer);
+      } catch {
+        if (!cancelled) setCanSeeDrafts(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const gridStart = startOfCalendarGrid(monthAnchor);
   const gridEnd   = endOfCalendarGrid(monthAnchor);
-  const endPlusOne = new Date(gridEnd.getFullYear(), gridEnd.getMonth(), gridEnd.getDate() + 1);
+  const endPlusOne = new Date(
+    gridEnd.getFullYear(),
+    gridEnd.getMonth(),
+    gridEnd.getDate() + 1
+  );
 
   // Fetch events that START within the visible grid window.
-  // RLS already controls WHO can see drafts.
+  // RLS still applies; here we just hide drafts for non-privileged users.
   React.useEffect(() => {
     let canceled = false;
     (async () => {
@@ -83,9 +128,7 @@ export default function CalendarMonth() {
         if (!canceled) setLoading(false);
       }
     })();
-    // re-run when the visible month changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthAnchor.getFullYear(), monthAnchor.getMonth()]);
+  }, [monthAnchor.getFullYear(), monthAnchor.getMonth()]); // re-run when month changes
 
   function prevMonth() { setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() - 1, 1)); }
   function nextMonth() { setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1)); }
@@ -93,7 +136,11 @@ export default function CalendarMonth() {
 
   // Build day cells
   const days: Date[] = [];
-  for (let d = new Date(gridStart); d <= gridEnd; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+  for (
+    let d = new Date(gridStart);
+    d <= gridEnd;
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+  ) {
     days.push(d);
   }
 
@@ -112,15 +159,71 @@ export default function CalendarMonth() {
   }
 
   // ---- styles ----
-  const wrap: React.CSSProperties   = { border: "1px solid var(--card-border)", borderRadius: 16, background: "var(--card)", boxShadow: "var(--shadow)" as any };
-  const header: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottom: "1px solid var(--border)" };
-  const btn: React.CSSProperties    = { border: "1px solid var(--btn-border)", background: "var(--btn-bg)", color: "var(--btn-text)", borderRadius: 8, padding: "6px 10px", cursor: "pointer" };
-  const grid: React.CSSProperties   = { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 0, borderTop: "1px solid var(--border)" };
-  const dow: React.CSSProperties    = { padding: 8, textAlign: "center", fontSize: 12, color: "var(--muted)", borderRight: "1px solid var(--border)" };
-  const cell: React.CSSProperties   = { minHeight: 110, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: 8, boxSizing: "border-box" };
+  const wrap: React.CSSProperties   = {
+    border: "1px solid var(--card-border)",
+    borderRadius: 16,
+    background: "var(--card)",
+    boxShadow: "var(--shadow)" as any
+  };
+  const header: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderBottom: "1px solid var(--border)"
+  };
+  const btn: React.CSSProperties    = {
+    border: "1px solid var(--btn-border)",
+    background: "var(--btn-bg)",
+    color: "var(--btn-text)",
+    borderRadius: 8,
+    padding: "6px 10px",
+    cursor: "pointer"
+  };
+  const grid: React.CSSProperties   = {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 0,
+    borderTop: "1px solid var(--border)"
+  };
+  const dow: React.CSSProperties    = {
+    padding: 8,
+    textAlign: "center",
+    fontSize: 12,
+    color: "var(--muted)",
+    borderRight: "1px solid var(--border)"
+  };
+  const cell: React.CSSProperties   = {
+    minHeight: 110,
+    borderRight: "1px solid var(--border)",
+    borderBottom: "1px solid var(--border)",
+    padding: 8,
+    boxSizing: "border-box"
+  };
   const daynum: React.CSSProperties = { fontSize: 12, opacity: .8, marginBottom: 6 };
-  const tagVisible: React.CSSProperties = { display: "block", padding: "2px 6px", borderRadius: 8, border: "1px solid var(--brand-700)", background: "var(--brand-600)", color: "#fff", fontSize: 12, marginBottom: 6, wordBreak: "break-word" };
-  const tagDraft: React.CSSProperties   = { display: "block", padding: "2px 6px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--muted)", fontSize: 12, marginBottom: 6, wordBreak: "break-word" };
+
+  const tagVisible: React.CSSProperties = {
+    display: "block",
+    padding: "2px 6px",
+    borderRadius: 8,
+    border: "1px solid var(--brand-700)",
+    background: "var(--brand-600)",
+    color: "#fff",
+    fontSize: 12,
+    marginBottom: 6,
+    wordBreak: "break-word"
+  };
+  const tagDraft: React.CSSProperties   = {
+    display: "block",
+    padding: "2px 6px",
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--bg)",
+    color: "var(--muted)",
+    fontSize: 12,
+    marginBottom: 6,
+    wordBreak: "break-word"
+  };
 
   const monthLabel = monthAnchor.toLocaleString(undefined, { month: "long", year: "numeric" });
   const weekdays = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -148,21 +251,35 @@ export default function CalendarMonth() {
       <div style={grid}>
         {days.map((d, idx) => {
           const isOtherMonth = d.getMonth() !== monthAnchor.getMonth();
-          const key = [d.getFullYear(), String(d.getMonth()+1).padStart(2,"0"), String(d.getDate()).padStart(2,"0")].join("-");
+          const key = [
+            d.getFullYear(),
+            String(d.getMonth()+1).padStart(2,"0"),
+            String(d.getDate()).padStart(2,"0")
+          ].join("-");
           const dayEvents = byDay.get(key) || [];
           return (
             <div key={idx} style={{ ...cell, opacity: isOtherMonth ? 0.5 : 1 }}>
               <div style={daynum}>{d.getDate()}</div>
               {dayEvents.map(ev => {
-                const visibleForStudents = ev.is_published || isNowPast(ev.publish_at);
-                const style = visibleForStudents ? tagVisible : tagDraft;
+                // for normal students: only show events that are published AND past their publish_at
+                const isActiveForStudents =
+                  ev.is_published && (!ev.publish_at || isNowPast(ev.publish_at));
+
+                // if viewer is not allowed to see drafts and this event isn't active, hide it completely
+                if (!canSeeDrafts && !isActiveForStudents) {
+                  return null;
+                }
+
+                const isDraft = !isActiveForStudents;
+                const style = isDraft && canSeeDrafts ? tagDraft : tagVisible;
+
                 return (
                   <a
                     key={ev.id}
                     href={`/events/${ev.id}`}
                     style={style as React.CSSProperties}
                     title={
-                      visibleForStudents
+                      !isDraft
                         ? ev.title
                         : ev.publish_at
                           ? `${ev.title} • Draft (publishes ${new Date(ev.publish_at).toLocaleString()})`
@@ -170,7 +287,7 @@ export default function CalendarMonth() {
                     }
                   >
                     {formatTimeLocalISO(ev.start_time)} · {ev.title}
-                    {!visibleForStudents && " (Draft)"}
+                    {isDraft && canSeeDrafts && " (Draft)"}
                   </a>
                 );
               })}
