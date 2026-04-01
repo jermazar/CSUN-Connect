@@ -1,8 +1,7 @@
 {
   "expo": {
-    "name": "Campus Social",
-    "slug": "campus-social",
-    "scheme": "campus-social",
-    "sdkVersion": "51.0.0"
+    "name": "CSUN Connect",
+    "slug": "csun-connect",
+    "scheme": "csun-connect"
   }
 }

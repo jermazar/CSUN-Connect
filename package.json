@@ -1,18 +1,13 @@
 {
   "name": "campus-social",
   "private": true,
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.16.1",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "dev:web": "pnpm --filter @campus/web dev",
-    "dev:mobile": "pnpm --filter @campus/mobile start",
-    "build": "pnpm -r build",
-    "lint": "pnpm -r lint"
-  },
-  "devDependencies": {
-    "typescript": "^5.4.0"
+    "dev:mobile": "pnpm --filter @campus/mobile start"
   }
 }
