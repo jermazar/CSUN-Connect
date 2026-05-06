@@ -43,6 +43,8 @@ export default function TabsLayout() {
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'groups') {
             iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'messages') {
+            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'account') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
@@ -54,6 +56,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="events" options={{ title: 'Events' }} />
       <Tabs.Screen name="groups" options={{ title: 'Clubs' }} />
+      <Tabs.Screen name="messages" options={{ title: 'Messages' }} />
       <Tabs.Screen name="account" options={{ title: 'Account' }} />
     </Tabs>
   );
